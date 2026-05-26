@@ -103,7 +103,9 @@ const TRANSLATIONS = {
     txt_btn_upload_photo: "Galeria",
     txt_btn_delete_photo: "Kendu",
     toast_photo_saved: "Argazkia gorde da!",
-    toast_photo_deleted: "Argazkia ezabatu da!"
+    toast_photo_deleted: "Argazkia ezabatu da!",
+    search_people_placeholder: "Laguna bilatu...",
+    search_drinks_placeholder: "Edaria bilatu..."
   },
   es: {
     tab_ronda: "Ronda",
@@ -206,7 +208,9 @@ const TRANSLATIONS = {
     txt_btn_upload_photo: "Galería",
     txt_btn_delete_photo: "Quitar",
     toast_photo_saved: "¡Foto guardada!",
-    toast_photo_deleted: "¡Foto eliminada!"
+    toast_photo_deleted: "¡Foto eliminada!",
+    search_people_placeholder: "Buscar amigo...",
+    search_drinks_placeholder: "Buscar bebida..."
   }
 };
 
@@ -249,6 +253,10 @@ let tempPersonPhotoDataUrl = null;
 
 // Variable to store camera stream in memory
 let cameraStream = null;
+
+// Search query filters for lists
+let searchQueryPeople = "";
+let searchQueryDrinks = "";
 
 function startLiveCamera() {
   const modalCamera = document.getElementById('modal-camera');
@@ -574,6 +582,14 @@ function initRouter() {
         }
       });
 
+      // Clear search queries and inputs when switching tabs for a clean user transition
+      searchQueryPeople = "";
+      searchQueryDrinks = "";
+      const searchPeopleEl = document.getElementById('search-people');
+      if (searchPeopleEl) searchPeopleEl.value = "";
+      const searchDrinksEl = document.getElementById('search-drinks');
+      if (searchDrinksEl) searchDrinksEl.value = "";
+
       // Render tab-specific sections when switched to make sure updates are fresh
       if (targetTab === 'tab-ronda') renderRonda();
       if (targetTab === 'tab-historial') renderHistorial();
@@ -864,6 +880,23 @@ function initEventListeners() {
       }
     });
   }
+
+  // Contextual Search Listeners
+  const searchPeopleInput = document.getElementById('search-people');
+  if (searchPeopleInput) {
+    searchPeopleInput.addEventListener('input', (e) => {
+      searchQueryPeople = e.target.value.toLowerCase().trim();
+      renderCuadrilla();
+    });
+  }
+
+  const searchDrinksInput = document.getElementById('search-drinks');
+  if (searchDrinksInput) {
+    searchDrinksInput.addEventListener('input', (e) => {
+      searchQueryDrinks = e.target.value.toLowerCase().trim();
+      renderBebidas();
+    });
+  }
 }
 
 
@@ -977,6 +1010,13 @@ function translateApp() {
 
   const txtBtnDeletePhoto = document.getElementById('txt-btn-delete-photo');
   if (txtBtnDeletePhoto) txtBtnDeletePhoto.innerText = t.txt_btn_delete_photo;
+
+  // Translate search placeholders
+  const searchPeople = document.getElementById('search-people');
+  if (searchPeople) searchPeople.placeholder = t.search_people_placeholder;
+
+  const searchDrinks = document.getElementById('search-drinks');
+  if (searchDrinks) searchDrinks.placeholder = t.search_drinks_placeholder;
 
   // Cancel buttons in modals
   const cancelBtns = document.querySelectorAll('.modal .btn-secondary');
@@ -1529,7 +1569,21 @@ function renderCuadrilla() {
     return;
   }
 
-  state.people.forEach(person => {
+  // Filter people list based on contextual search input
+  const filteredPeople = state.people.filter(person => 
+    person.name.toLowerCase().includes(searchQueryPeople)
+  );
+
+  if (filteredPeople.length === 0 && searchQueryPeople !== "") {
+    peopleList.innerHTML = `
+      <div class="empty-state" style="padding: 20px 0;">
+        <p>${state.lang === 'eu' ? 'Ez da emaitzarik aurkitu' : 'No se encontraron resultados'}</p>
+      </div>
+    `;
+    return;
+  }
+
+  filteredPeople.forEach(person => {
     const row = document.createElement('div');
     row.className = 'entity-row';
 
@@ -1640,7 +1694,22 @@ function renderBebidas() {
     return;
   }
 
-  state.drinks.forEach(drink => {
+  // Filter drinks list based on contextual search input (matches name or category)
+  const filteredDrinks = state.drinks.filter(drink => 
+    drink.name.toLowerCase().includes(searchQueryDrinks) ||
+    (drink.category && drink.category.toLowerCase().includes(searchQueryDrinks))
+  );
+
+  if (filteredDrinks.length === 0 && searchQueryDrinks !== "") {
+    drinksList.innerHTML = `
+      <div class="empty-state" style="padding: 20px 0;">
+        <p>${state.lang === 'eu' ? 'Ez da emaitzarik aurkitu' : 'No se encontraron resultados'}</p>
+      </div>
+    `;
+    return;
+  }
+
+  filteredDrinks.forEach(drink => {
     const row = document.createElement('div');
     row.className = 'entity-row';
 
