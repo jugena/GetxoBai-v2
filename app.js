@@ -759,6 +759,10 @@ function initEventListeners() {
           if (inputPersonPhotoCamera) inputPersonPhotoCamera.click();
         });
       } else {
+        const httpsMsg = state.lang === 'eu'
+          ? "Errorea: Segurtasun mugapena. Ziurtatu HTTPS (https://) helbidea erabiltzen ari zarela."
+          : "Advertencia: Tu navegador bloquea la cámara. Asegúrate de usar HTTPS (escribe https:// al inicio).";
+        showToast(httpsMsg, 'danger');
         if (inputPersonPhotoCamera) inputPersonPhotoCamera.click();
       }
     });
@@ -773,6 +777,10 @@ function initEventListeners() {
           if (inputPersonPhotoCamera) inputPersonPhotoCamera.click();
         });
       } else {
+        const httpsMsg = state.lang === 'eu'
+          ? "Errorea: Segurtasun mugapena. Ziurtatu HTTPS (https://) helbidea erabiltzen ari zarela."
+          : "Advertencia: Tu navegador bloquea la cámara. Asegúrate de usar HTTPS (escribe https:// al inicio).";
+        showToast(httpsMsg, 'danger');
         if (inputPersonPhotoCamera) inputPersonPhotoCamera.click();
       }
     });
