@@ -1,0 +1,77 @@
+{
+  "name": "GetxoBai - Control de Rondas",
+  "short_name": "GetxoBai",
+  "description": "Lleva el control de qué pide cada uno en tu cuadrilla de bar en bar.",
+  "lang": "eu",
+  "dir": "ltr",
+  "categories": [
+    "food",
+    "social",
+    "utilities"
+  ],
+  "start_url": "index.html",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0b0c10",
+  "theme_color": "#0b0c10",
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Ronda Aktiboa",
+      "short_name": "Ronda",
+      "description": "Gaurko ronda aktiboa kudeatu / Ver ronda activa",
+      "url": "index.html",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Rondaren Historiala",
+      "short_name": "Historiala",
+      "description": "Gorde diren rondak ikusi / Ver historial de rondas",
+      "url": "index.html#tab-historial",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "img/screenshot_mobile.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "GetxoBai mobile round summary screen"
+    },
+    {
+      "src": "img/screenshot_desktop.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "GetxoBai premium widescreen dashboard display"
+    }
+  ]
+}
