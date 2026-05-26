@@ -98,7 +98,11 @@ const TRANSLATIONS = {
     whatsapp_ordered_by: "Eskatzaileak",
     btn_start_parranda: "Parranda Hasi!",
     bar_placeholder: "Tabernaren izena...",
-    prompt_bar_name: "Sartu tabernaren izena:"
+    prompt_bar_name: "Sartu tabernaren izena:",
+    txt_btn_take_photo: "Argazkia / Igo",
+    txt_btn_delete_photo: "Kendu",
+    toast_photo_saved: "Argazkia gorde da!",
+    toast_photo_deleted: "Argazkia ezabatu da!"
   },
   es: {
     tab_ronda: "Ronda",
@@ -196,7 +200,11 @@ const TRANSLATIONS = {
     whatsapp_ordered_by: "Pedido por",
     btn_start_parranda: "¡Parranda!",
     bar_placeholder: "Nombre del bar...",
-    prompt_bar_name: "Introduce el nombre del bar:"
+    prompt_bar_name: "Introduce el nombre del bar:",
+    txt_btn_take_photo: "Hacer Foto / Subir",
+    txt_btn_delete_photo: "Quitar",
+    toast_photo_saved: "¡Foto guardada!",
+    toast_photo_deleted: "¡Foto eliminada!"
   }
 };
 
@@ -233,6 +241,173 @@ let state = {
 
 // Helper: Active Person ID being modified in drink selection bottom sheet
 let activeSelectPersonId = null;
+
+// Temporary variable for editing person photo (base64 string or null)
+let tempPersonPhotoDataUrl = null;
+
+// ==========================================================================
+// INDEXEDDB MODULE FOR USER PHOTOS
+// ==========================================================================
+const DB_NAME = 'GetxoBaiDB';
+const DB_VERSION = 1;
+const STORE_NAME = 'user_photos';
+
+function initDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    request.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME);
+      }
+    };
+    request.onsuccess = (e) => resolve(e.target.result);
+    request.onerror = (e) => reject(e.target.error);
+  });
+}
+
+function savePhoto(personId, base64Data) {
+  return initDB().then(db => {
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([STORE_NAME], 'readwrite');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.put(base64Data, personId);
+      request.onsuccess = () => resolve();
+      request.onerror = (e) => reject(e.target.error);
+    });
+  });
+}
+
+function getPhoto(personId) {
+  return initDB().then(db => {
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([STORE_NAME], 'readonly');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.get(personId);
+      request.onsuccess = (e) => resolve(e.target.result);
+      request.onerror = (e) => reject(e.target.error);
+    });
+  }).catch(err => {
+    console.error("IndexedDB error:", err);
+    return null;
+  });
+}
+
+function deletePhoto(personId) {
+  return initDB().then(db => {
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([STORE_NAME], 'readwrite');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.delete(personId);
+      request.onsuccess = () => resolve();
+      request.onerror = (e) => reject(e.target.error);
+    });
+  });
+}
+
+// Deterministic pastel/dark neon color for avatar initials
+function getAvatarColor(name) {
+  if (!name) return 'var(--text-muted)';
+  const colors = [
+    '#f5a623', // Gold
+    '#3498db', // Blue
+    '#2ecc71', // Green
+    '#9b59b6', // Purple
+    '#ff4757', // Coral
+    '#1abc9c', // Teal
+    '#e67e22', // Orange
+    '#d35400', // Dark Orange
+    '#8e44ad', // Dark Violet
+    '#27ae60'  // Dark Green
+  ];
+  let sum = 0;
+  for (let i = 0; i < name.length; i++) {
+    sum += name.charCodeAt(i);
+  }
+  return colors[sum % colors.length];
+}
+
+// Compress and Resize image to maximum 400px using canvas
+function resizeAndCompressImage(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxSize = 400; // max size in pixels
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxSize) {
+            height = Math.round((height * maxSize) / width);
+            width = maxSize;
+          }
+        } else {
+          if (height > maxSize) {
+            width = Math.round((width * maxSize) / height);
+            height = maxSize;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Compress as JPEG with 0.7 quality
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+        resolve(dataUrl);
+      };
+      img.onerror = (err) => reject(err);
+      img.src = e.target.result;
+    };
+    reader.onerror = (err) => reject(err);
+    reader.readAsDataURL(file);
+  });
+}
+
+// Open Image Lightbox Modal
+function openLightbox(photoUrl, name) {
+  const lightbox = document.getElementById('modal-lightbox');
+  const img = document.getElementById('lightbox-img');
+  const caption = document.getElementById('lightbox-caption');
+  
+  if (lightbox && img && caption) {
+    img.src = photoUrl;
+    caption.innerText = name;
+    lightbox.classList.add('active');
+  }
+}
+
+function closeLightbox() {
+  const lightbox = document.getElementById('modal-lightbox');
+  if (lightbox) {
+    lightbox.classList.remove('active');
+  }
+}
+
+// Helper to update modal avatar edit preview
+function updateAvatarEditPreview(dataUrl) {
+  const preview = document.getElementById('avatar-edit-preview');
+  const initialsSpan = document.getElementById('avatar-edit-initials');
+  const btnDelete = document.getElementById('btn-delete-photo');
+  const nameInput = document.getElementById('input-person-name');
+  
+  if (!preview || !btnDelete) return;
+  
+  if (dataUrl) {
+    preview.innerHTML = `<img src="${dataUrl}" class="avatar-img" alt="Previsualización">`;
+    btnDelete.classList.remove('hidden');
+  } else {
+    const initials = nameInput ? (nameInput.value.trim().charAt(0).toUpperCase() || '?') : '?';
+    preview.innerHTML = `<span class="avatar-initials" id="avatar-edit-initials" style="background-color: ${getAvatarColor(nameInput ? nameInput.value : '')}">${initials}</span>`;
+    btnDelete.classList.add('hidden');
+  }
+}
+
 
 // Initialize App
 document.addEventListener('DOMContentLoaded', () => {
@@ -486,7 +661,70 @@ function initEventListeners() {
   document.getElementById('form-drink').addEventListener('submit', (e) => {
     saveDrinkSubmit();
   });
+
+  // --- USER PHOTO & LIGHTBOX EVENTS ---
+  const btnTakePhoto = document.getElementById('btn-take-photo');
+  const inputPersonPhoto = document.getElementById('input-person-photo');
+  const avatarEditPreview = document.getElementById('avatar-edit-preview');
+  
+  if (btnTakePhoto && inputPersonPhoto) {
+    btnTakePhoto.addEventListener('click', () => inputPersonPhoto.click());
+  }
+  if (avatarEditPreview && inputPersonPhoto) {
+    avatarEditPreview.addEventListener('click', () => inputPersonPhoto.click());
+  }
+
+  // Handle Photo selection and processing
+  if (inputPersonPhoto) {
+    inputPersonPhoto.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      resizeAndCompressImage(file).then(dataUrl => {
+        tempPersonPhotoDataUrl = dataUrl;
+        updateAvatarEditPreview(dataUrl);
+      }).catch(err => {
+        console.error("Error processing image:", err);
+        showToast(state.lang === 'eu' ? "Errorea argazkia prozesatzean" : "Error al procesar la foto", 'danger');
+      });
+    });
+  }
+
+  // Handle Photo deletion in form
+  const btnDeletePhoto = document.getElementById('btn-delete-photo');
+  if (btnDeletePhoto) {
+    btnDeletePhoto.addEventListener('click', () => {
+      tempPersonPhotoDataUrl = null;
+      if (inputPersonPhoto) inputPersonPhoto.value = "";
+      updateAvatarEditPreview(null);
+    });
+  }
+
+  // Dynamic Initials Update in modal form as user types name
+  const nameInput = document.getElementById('input-person-name');
+  if (nameInput) {
+    nameInput.addEventListener('input', () => {
+      if (!tempPersonPhotoDataUrl) {
+        updateAvatarEditPreview(null);
+      }
+    });
+  }
+
+  // Lightbox Modal Controls
+  const btnCloseLightbox = document.getElementById('btn-close-lightbox');
+  const modalLightbox = document.getElementById('modal-lightbox');
+  if (btnCloseLightbox) {
+    btnCloseLightbox.addEventListener('click', closeLightbox);
+  }
+  if (modalLightbox) {
+    modalLightbox.addEventListener('click', (e) => {
+      if (e.target === modalLightbox) {
+        closeLightbox();
+      }
+    });
+  }
 }
+
 
 // Toast Notifications System
 function showToast(message, type = 'success') {
@@ -586,8 +824,12 @@ function translateApp() {
   const drinkNameLabel = document.querySelector('label[for="input-drink-name"]');
   if (drinkNameLabel) drinkNameLabel.innerText = t.modal_drink_label_name;
 
-  const drinkCatLabel = document.querySelector('label[for="input-drink-category"]');
-  if (drinkCatLabel) drinkCatLabel.innerText = t.modal_drink_label_cat;
+  // Translate Photo action buttons in modal
+  const txtBtnTakePhoto = document.getElementById('txt-btn-take-photo');
+  if (txtBtnTakePhoto) txtBtnTakePhoto.innerText = t.txt_btn_take_photo;
+
+  const txtBtnDeletePhoto = document.getElementById('txt-btn-delete-photo');
+  if (txtBtnDeletePhoto) txtBtnDeletePhoto.innerText = t.txt_btn_delete_photo;
 
   // Cancel buttons in modals
   const cancelBtns = document.querySelectorAll('.modal .btn-secondary');
@@ -761,8 +1003,17 @@ function renderRonda() {
       group.people.forEach(person => {
         const pRow = document.createElement('div');
         pRow.className = 'accordion-person-row';
+
+        const initials = person.name.trim().charAt(0).toUpperCase() || '?';
+        const avatarColor = getAvatarColor(person.name);
+
         pRow.innerHTML = `
-          <span class="accordion-person-name">${person.name}</span>
+          <div class="accordion-person-left-area">
+            <div class="entity-avatar mini" data-ronda-avatar-person-id="${person.id}" title="Ver foto">
+              <span class="avatar-initials" style="background-color: ${avatarColor}">${initials}</span>
+            </div>
+            <span class="accordion-person-name">${person.name}</span>
+          </div>
           <div class="accordion-person-actions">
             <button class="btn-mini-change" data-btn-change-person-id="${person.id}">${t.btn_mini_change}</button>
             <button class="btn-mini-remove" data-btn-remove-person-id="${person.id}" title="${t.btn_mini_remove}" aria-label="${t.btn_mini_remove}">
@@ -773,6 +1024,29 @@ function renderRonda() {
             </button>
           </div>
         `;
+
+        // Asynchronously load avatar image from IndexedDB
+        getPhoto(person.id).then(photoUrl => {
+          if (photoUrl) {
+            const avatarEl = pRow.querySelector(`[data-ronda-avatar-person-id="${person.id}"]`);
+            if (avatarEl) {
+              avatarEl.innerHTML = `<img src="${photoUrl}" class="avatar-img" alt="${person.name}">`;
+            }
+          }
+        });
+
+        // Lightbox trigger in active round
+        const avatarEl = pRow.querySelector(`[data-ronda-avatar-person-id="${person.id}"]`);
+        if (avatarEl) {
+          avatarEl.addEventListener('click', (e) => {
+            e.stopPropagation();
+            getPhoto(person.id).then(photoUrl => {
+              if (photoUrl) {
+                openLightbox(photoUrl, person.name);
+              }
+            });
+          });
+        }
 
         // Event: Change Person's Drink
         pRow.querySelector(`[data-btn-change-person-id="${person.id}"]`).addEventListener('click', (e) => {
@@ -1115,10 +1389,18 @@ function renderCuadrilla() {
     const drinkObj = state.drinks.find(d => d.id === person.defaultDrinkId);
     const drinkName = drinkObj ? drinkObj.name : t.friend_preference_none;
 
+    const initials = person.name.trim().charAt(0).toUpperCase() || '?';
+    const avatarColor = getAvatarColor(person.name);
+
     row.innerHTML = `
-      <div class="entity-info">
-        <span class="entity-title">${person.name}</span>
-        <span class="entity-subtitle">${t.friend_preference_label} ${drinkName}</span>
+      <div class="entity-left-area">
+        <div class="entity-avatar" data-avatar-person-id="${person.id}" title="Ver foto">
+          <span class="avatar-initials" style="background-color: ${avatarColor}">${initials}</span>
+        </div>
+        <div class="entity-info">
+          <span class="entity-title">${person.name}</span>
+          <span class="entity-subtitle">${t.friend_preference_label} ${drinkName}</span>
+        </div>
       </div>
       <div class="entity-actions">
         <label class="switch-control" title="${t.tab_cuadrilla}">
@@ -1139,6 +1421,33 @@ function renderCuadrilla() {
         </button>
       </div>
     `;
+
+    // Asynchronously load avatar image from IndexedDB
+    getPhoto(person.id).then(photoUrl => {
+      if (photoUrl) {
+        const avatarEl = row.querySelector(`[data-avatar-person-id="${person.id}"]`);
+        if (avatarEl) {
+          avatarEl.innerHTML = `<img src="${photoUrl}" class="avatar-img" alt="${person.name}">`;
+        }
+      }
+    });
+
+    // Lightbox modal zoom trigger
+    const avatarEl = row.querySelector(`[data-avatar-person-id="${person.id}"]`);
+    if (avatarEl) {
+      avatarEl.addEventListener('click', (e) => {
+        e.stopPropagation();
+        getPhoto(person.id).then(photoUrl => {
+          if (photoUrl) {
+            openLightbox(photoUrl, person.name);
+          } else {
+            // Show toast if no photo is configured, prompting them to add one
+            const tipMsg = state.lang === 'eu' ? "Editatu laguna bere argazkia igotzeko!" : "¡Edita el amigo para subir su foto!";
+            showToast(tipMsg, 'info');
+          }
+        });
+      });
+    }
 
     // Listeners for active toggle
     row.querySelector(`[data-person-toggle-id="${person.id}"]`).addEventListener('change', (e) => {
@@ -1231,7 +1540,26 @@ function openDrinkSheet(personId) {
   const currentDrinkId = state.currentOrders[personId];
   
   const title = document.getElementById('drink-sheet-title');
-  title.innerText = t.sheet_title(person.name);
+  const initials = person.name.trim().charAt(0).toUpperCase() || '?';
+  const avatarColor = getAvatarColor(person.name);
+  
+  title.innerHTML = `
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <div class="entity-avatar mini" id="sheet-avatar" style="cursor: default;">
+        <span class="avatar-initials" style="background-color: ${avatarColor}">${initials}</span>
+      </div>
+      <span>${t.sheet_title(person.name)}</span>
+    </div>
+  `;
+  
+  getPhoto(person.id).then(photoUrl => {
+    if (photoUrl) {
+      const sheetAvatar = document.getElementById('sheet-avatar');
+      if (sheetAvatar) {
+        sheetAvatar.innerHTML = `<img src="${photoUrl}" class="avatar-img" alt="${person.name}">`;
+      }
+    }
+  });
 
   const grid = document.getElementById('sheet-drink-grid');
   grid.innerHTML = '';
@@ -1300,6 +1628,12 @@ function preparePersonModal() {
   document.getElementById('input-person-name').value = "";
   document.getElementById('input-person-name').placeholder = t.modal_label_name_placeholder;
   
+  // Clear any temporary photo state
+  tempPersonPhotoDataUrl = null;
+  const inputPhoto = document.getElementById('input-person-photo');
+  if (inputPhoto) inputPhoto.value = "";
+  updateAvatarEditPreview(null);
+  
   populateDefaultDrinkDropdown();
 }
 
@@ -1325,6 +1659,17 @@ function editPerson(person) {
   document.getElementById('input-person-name').value = person.name;
   document.getElementById('input-person-name').placeholder = t.modal_label_name_placeholder;
   
+  // Reset input file and temp storage
+  tempPersonPhotoDataUrl = null;
+  const inputPhoto = document.getElementById('input-person-photo');
+  if (inputPhoto) inputPhoto.value = "";
+  
+  // Load photo from IndexedDB and update edit preview
+  getPhoto(person.id).then(photoUrl => {
+    tempPersonPhotoDataUrl = photoUrl || null;
+    updateAvatarEditPreview(photoUrl);
+  });
+  
   populateDefaultDrinkDropdown(person.defaultDrinkId);
   openModal('modal-person');
 }
@@ -1349,11 +1694,24 @@ function savePersonSubmit() {
         state.currentOrders[person.id] = defaultDrinkId;
       }
     }
+    
+    // Save or delete photo as needed
+    if (tempPersonPhotoDataUrl) {
+      savePhoto(editId, tempPersonPhotoDataUrl).then(() => {
+        renderAll();
+      });
+    } else {
+      deletePhoto(editId).then(() => {
+        renderAll();
+      });
+    }
+    
     showToast(t.toast_friend_edited(name));
   } else {
     // Add new
+    const newPersonId = 'p-' + Date.now();
     const newPerson = {
-      id: 'p-' + Date.now(),
+      id: newPersonId,
       name: name,
       active: true, // Start active so they join the party!
       defaultDrinkId: defaultDrinkId || null
@@ -1362,6 +1720,14 @@ function savePersonSubmit() {
     
     // Add to active orders
     state.currentOrders[newPerson.id] = defaultDrinkId || (state.drinks[0] ? state.drinks[0].id : '');
+    
+    // Save photo to IndexedDB if it was captured
+    if (tempPersonPhotoDataUrl) {
+      savePhoto(newPersonId, tempPersonPhotoDataUrl).then(() => {
+        renderAll();
+      });
+    }
+    
     showToast(t.toast_friend_added(name));
   }
 
@@ -1379,11 +1745,15 @@ function deletePerson(personId) {
     state.people = state.people.filter(p => p.id !== personId);
     delete state.currentOrders[personId];
     
+    // Delete their associated photo from IndexedDB
+    deletePhoto(personId).catch(err => console.error("Error deleting avatar:", err));
+    
     saveState();
     renderAll();
     showToast(t.toast_friend_removed);
   }
 }
+
 
 // Drink Modals CRUD helper
 function prepareDrinkModal() {
