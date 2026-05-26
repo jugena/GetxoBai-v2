@@ -1767,3 +1767,103 @@ select {
   }
 }
 
+/* ==========================================================================
+   LIVE CAMERA OVERLAY PANEL
+   ========================================================================== */
+#modal-camera {
+  background-color: #000;
+  padding: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+#modal-camera.active {
+  display: flex;
+}
+
+.camera-panel {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  max-width: 600px;
+  background-color: #000;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#camera-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  flex: 1;
+}
+
+.camera-overlay-guideline {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(260px, 65vw);
+  height: min(260px, 65vw);
+  border: 3px dashed rgba(245, 166, 35, 0.75);
+  border-radius: 50%;
+  pointer-events: none;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.65);
+}
+
+.camera-actions {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 110px;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 20px;
+}
+
+.btn-camera-shutter {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: #fff;
+  border: 5px solid rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
+  transition: transform 0.2s ease;
+}
+
+.btn-camera-shutter:active {
+  transform: scale(0.9);
+  background: var(--accent-gold);
+  border-color: rgba(245, 166, 35, 0.3);
+}
+
+.btn-camera-cancel {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.btn-camera-cancel:hover, .btn-camera-cancel:active {
+  background: rgba(255, 71, 87, 0.35);
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+

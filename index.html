@@ -345,6 +345,21 @@
     </div>
   </div>
 
+  <!-- MODAL: CÁMARA EN VIVO -->
+  <div class="modal-backdrop" id="modal-camera" style="z-index: 2000;">
+    <div class="camera-panel">
+      <video id="camera-video" autoplay playsinline></video>
+      <div class="camera-overlay-guideline"></div>
+      <div class="camera-actions">
+        <button type="button" class="btn-camera-cancel" id="btn-camera-cancel" aria-label="Cancelar">
+          &times;
+        </button>
+        <button type="button" class="btn-camera-shutter" id="btn-camera-shutter" aria-label="Capturar"></button>
+        <div style="width: 48px;"></div> <!-- Spacer to align shuter -->
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: LIGHTBOX DE FOTO AMPLIADA -->
   <div class="modal-backdrop" id="modal-lightbox">
     <div class="lightbox-modal">

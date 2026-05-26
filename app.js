@@ -247,6 +247,75 @@ let activeSelectPersonId = null;
 // Temporary variable for editing person photo (base64 string or null)
 let tempPersonPhotoDataUrl = null;
 
+// Variable to store camera stream in memory
+let cameraStream = null;
+
+function startLiveCamera() {
+  const modalCamera = document.getElementById('modal-camera');
+  const video = document.getElementById('camera-video');
+  
+  if (!modalCamera || !video) return Promise.reject("Elements not found");
+  
+  // Open camera overlay
+  modalCamera.classList.add('active');
+  
+  // Request camera stream from rear camera
+  return navigator.mediaDevices.getUserMedia({
+    video: {
+      facingMode: { ideal: 'environment' },
+      width: { ideal: 640 },
+      height: { ideal: 640 }
+    },
+    audio: false
+  }).then(stream => {
+    cameraStream = stream;
+    video.srcObject = stream;
+    return true;
+  }).catch(err => {
+    console.error("Camera access error:", err);
+    // Close overlay on error
+    modalCamera.classList.remove('active');
+    throw err;
+  });
+}
+
+function stopLiveCamera() {
+  const modalCamera = document.getElementById('modal-camera');
+  const video = document.getElementById('camera-video');
+  
+  if (modalCamera) modalCamera.classList.remove('active');
+  
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(track => track.stop());
+    cameraStream = null;
+  }
+  
+  if (video) video.srcObject = null;
+}
+
+function captureFrame() {
+  const video = document.getElementById('camera-video');
+  if (!video || !cameraStream) return null;
+  
+  const canvas = document.createElement('canvas');
+  // Capture square crop
+  const size = Math.min(video.videoWidth, video.videoHeight);
+  canvas.width = 400;
+  canvas.height = 400;
+  
+  const ctx = canvas.getContext('2d');
+  
+  // Center crop
+  const sx = (video.videoWidth - size) / 2;
+  const sy = (video.videoHeight - size) / 2;
+  
+  ctx.drawImage(video, sx, sy, size, size, 0, 0, 400, 400);
+  
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+  return dataUrl;
+}
+
+
 // ==========================================================================
 // INDEXEDDB MODULE FOR USER PHOTOS
 // ==========================================================================
@@ -671,14 +740,51 @@ function initEventListeners() {
   const inputPersonPhotoGallery = document.getElementById('input-person-photo-gallery');
   const avatarEditPreview = document.getElementById('avatar-edit-preview');
   
-  if (btnTakePhoto && inputPersonPhotoCamera) {
-    btnTakePhoto.addEventListener('click', () => inputPersonPhotoCamera.click());
+  if (btnTakePhoto) {
+    btnTakePhoto.addEventListener('click', () => {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        startLiveCamera().catch(err => {
+          if (inputPersonPhotoCamera) inputPersonPhotoCamera.click();
+        });
+      } else {
+        if (inputPersonPhotoCamera) inputPersonPhotoCamera.click();
+      }
+    });
   }
   if (btnUploadPhoto && inputPersonPhotoGallery) {
     btnUploadPhoto.addEventListener('click', () => inputPersonPhotoGallery.click());
   }
-  if (avatarEditPreview && inputPersonPhotoCamera) {
-    avatarEditPreview.addEventListener('click', () => inputPersonPhotoCamera.click());
+  if (avatarEditPreview) {
+    avatarEditPreview.addEventListener('click', () => {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        startLiveCamera().catch(err => {
+          if (inputPersonPhotoCamera) inputPersonPhotoCamera.click();
+        });
+      } else {
+        if (inputPersonPhotoCamera) inputPersonPhotoCamera.click();
+      }
+    });
+  }
+
+  // Live Camera Controls (Shutter and Cancel)
+  const btnCameraShutter = document.getElementById('btn-camera-shutter');
+  const btnCameraCancel = document.getElementById('btn-camera-cancel');
+  
+  if (btnCameraShutter) {
+    btnCameraShutter.addEventListener('click', () => {
+      const dataUrl = captureFrame();
+      if (dataUrl) {
+        tempPersonPhotoDataUrl = dataUrl;
+        updateAvatarEditPreview(dataUrl);
+      }
+      stopLiveCamera();
+    });
+  }
+  
+  if (btnCameraCancel) {
+    btnCameraCancel.addEventListener('click', () => {
+      stopLiveCamera();
+    });
   }
 
   // Handle Photo selection and processing helper
@@ -762,6 +868,9 @@ function openModal(modalId) {
 
 function closeModal(modalId) {
   document.getElementById(modalId).classList.remove('active');
+  if (modalId === 'modal-person') {
+    stopLiveCamera();
+  }
 }
 
 /* RENDERING SYSTEM */
