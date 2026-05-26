@@ -259,24 +259,36 @@ function startLiveCamera() {
   // Open camera overlay
   modalCamera.classList.add('active');
   
-  // Request camera stream from rear camera
-  return navigator.mediaDevices.getUserMedia({
-    video: {
-      facingMode: { ideal: 'environment' },
-      width: { ideal: 640 },
-      height: { ideal: 640 }
-    },
+  // Request camera stream using standard rear camera facingMode
+  const constraints = {
+    video: { facingMode: 'environment' },
     audio: false
-  }).then(stream => {
-    cameraStream = stream;
-    video.srcObject = stream;
-    return true;
-  }).catch(err => {
-    console.error("Camera access error:", err);
-    // Close overlay on error
-    modalCamera.classList.remove('active');
-    throw err;
-  });
+  };
+  
+  return navigator.mediaDevices.getUserMedia(constraints)
+    .catch(err => {
+      console.warn("Retrying camera stream with basic video constraints...", err);
+      // Fallback: try asking for ANY video device (e.g. if facingMode failed or is unsupported)
+      return navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    })
+    .then(stream => {
+      cameraStream = stream;
+      video.srcObject = stream;
+      return true;
+    })
+    .catch(err => {
+      console.error("Camera access failed:", err);
+      // Close overlay on error
+      modalCamera.classList.remove('active');
+      
+      // Toast notification for user showing the exact error name
+      const errorMsg = state.lang === 'eu' 
+        ? `Kamera errorea: ${err.name}` 
+        : `Error de cámara: ${err.name} (${err.message || 'Bloqueado'})`;
+      showToast(errorMsg, 'danger');
+      
+      throw err;
+    });
 }
 
 function stopLiveCamera() {
