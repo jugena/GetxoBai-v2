@@ -1,4 +1,4 @@
-const CACHE_NAME = 'getxobai-v2';
+const CACHE_NAME = 'getxobai-v3';
 const ASSETS = [
   './',
   'index.html',
