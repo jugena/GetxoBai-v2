@@ -99,7 +99,8 @@ const TRANSLATIONS = {
     btn_start_parranda: "Parranda Hasi!",
     bar_placeholder: "Tabernaren izena...",
     prompt_bar_name: "Sartu tabernaren izena:",
-    txt_btn_take_photo: "Argazkia / Igo",
+    txt_btn_take_photo: "Argazkia egin",
+    txt_btn_upload_photo: "Galeria",
     txt_btn_delete_photo: "Kendu",
     toast_photo_saved: "Argazkia gorde da!",
     toast_photo_deleted: "Argazkia ezabatu da!"
@@ -201,7 +202,8 @@ const TRANSLATIONS = {
     btn_start_parranda: "¡Parranda!",
     bar_placeholder: "Nombre del bar...",
     prompt_bar_name: "Introduce el nombre del bar:",
-    txt_btn_take_photo: "Hacer Foto / Subir",
+    txt_btn_take_photo: "Hacer Foto",
+    txt_btn_upload_photo: "Galería",
     txt_btn_delete_photo: "Quitar",
     toast_photo_saved: "¡Foto guardada!",
     toast_photo_deleted: "¡Foto eliminada!"
@@ -664,29 +666,41 @@ function initEventListeners() {
 
   // --- USER PHOTO & LIGHTBOX EVENTS ---
   const btnTakePhoto = document.getElementById('btn-take-photo');
-  const inputPersonPhoto = document.getElementById('input-person-photo');
+  const btnUploadPhoto = document.getElementById('btn-upload-photo');
+  const inputPersonPhotoCamera = document.getElementById('input-person-photo-camera');
+  const inputPersonPhotoGallery = document.getElementById('input-person-photo-gallery');
   const avatarEditPreview = document.getElementById('avatar-edit-preview');
   
-  if (btnTakePhoto && inputPersonPhoto) {
-    btnTakePhoto.addEventListener('click', () => inputPersonPhoto.click());
+  if (btnTakePhoto && inputPersonPhotoCamera) {
+    btnTakePhoto.addEventListener('click', () => inputPersonPhotoCamera.click());
   }
-  if (avatarEditPreview && inputPersonPhoto) {
-    avatarEditPreview.addEventListener('click', () => inputPersonPhoto.click());
+  if (btnUploadPhoto && inputPersonPhotoGallery) {
+    btnUploadPhoto.addEventListener('click', () => inputPersonPhotoGallery.click());
+  }
+  if (avatarEditPreview && inputPersonPhotoCamera) {
+    avatarEditPreview.addEventListener('click', () => inputPersonPhotoCamera.click());
   }
 
-  // Handle Photo selection and processing
-  if (inputPersonPhoto) {
-    inputPersonPhoto.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      
-      resizeAndCompressImage(file).then(dataUrl => {
-        tempPersonPhotoDataUrl = dataUrl;
-        updateAvatarEditPreview(dataUrl);
-      }).catch(err => {
-        console.error("Error processing image:", err);
-        showToast(state.lang === 'eu' ? "Errorea argazkia prozesatzean" : "Error al procesar la foto", 'danger');
-      });
+  // Handle Photo selection and processing helper
+  const handlePhotoSelect = (file) => {
+    if (!file) return;
+    resizeAndCompressImage(file).then(dataUrl => {
+      tempPersonPhotoDataUrl = dataUrl;
+      updateAvatarEditPreview(dataUrl);
+    }).catch(err => {
+      console.error("Error processing image:", err);
+      showToast(state.lang === 'eu' ? "Errorea argazkia prozesatzean" : "Error al procesar la foto", 'danger');
+    });
+  };
+
+  if (inputPersonPhotoCamera) {
+    inputPersonPhotoCamera.addEventListener('change', (e) => {
+      handlePhotoSelect(e.target.files[0]);
+    });
+  }
+  if (inputPersonPhotoGallery) {
+    inputPersonPhotoGallery.addEventListener('change', (e) => {
+      handlePhotoSelect(e.target.files[0]);
     });
   }
 
@@ -695,7 +709,8 @@ function initEventListeners() {
   if (btnDeletePhoto) {
     btnDeletePhoto.addEventListener('click', () => {
       tempPersonPhotoDataUrl = null;
-      if (inputPersonPhoto) inputPersonPhoto.value = "";
+      if (inputPersonPhotoCamera) inputPersonPhotoCamera.value = "";
+      if (inputPersonPhotoGallery) inputPersonPhotoGallery.value = "";
       updateAvatarEditPreview(null);
     });
   }
@@ -827,6 +842,9 @@ function translateApp() {
   // Translate Photo action buttons in modal
   const txtBtnTakePhoto = document.getElementById('txt-btn-take-photo');
   if (txtBtnTakePhoto) txtBtnTakePhoto.innerText = t.txt_btn_take_photo;
+
+  const txtBtnUploadPhoto = document.getElementById('txt-btn-upload-photo');
+  if (txtBtnUploadPhoto) txtBtnUploadPhoto.innerText = t.txt_btn_upload_photo;
 
   const txtBtnDeletePhoto = document.getElementById('txt-btn-delete-photo');
   if (txtBtnDeletePhoto) txtBtnDeletePhoto.innerText = t.txt_btn_delete_photo;
@@ -1630,8 +1648,10 @@ function preparePersonModal() {
   
   // Clear any temporary photo state
   tempPersonPhotoDataUrl = null;
-  const inputPhoto = document.getElementById('input-person-photo');
-  if (inputPhoto) inputPhoto.value = "";
+  const inputPhotoCamera = document.getElementById('input-person-photo-camera');
+  const inputPhotoGallery = document.getElementById('input-person-photo-gallery');
+  if (inputPhotoCamera) inputPhotoCamera.value = "";
+  if (inputPhotoGallery) inputPhotoGallery.value = "";
   updateAvatarEditPreview(null);
   
   populateDefaultDrinkDropdown();
@@ -1661,8 +1681,10 @@ function editPerson(person) {
   
   // Reset input file and temp storage
   tempPersonPhotoDataUrl = null;
-  const inputPhoto = document.getElementById('input-person-photo');
-  if (inputPhoto) inputPhoto.value = "";
+  const inputPhotoCamera = document.getElementById('input-person-photo-camera');
+  const inputPhotoGallery = document.getElementById('input-person-photo-gallery');
+  if (inputPhotoCamera) inputPhotoCamera.value = "";
+  if (inputPhotoGallery) inputPhotoGallery.value = "";
   
   // Load photo from IndexedDB and update edit preview
   getPhoto(person.id).then(photoUrl => {
